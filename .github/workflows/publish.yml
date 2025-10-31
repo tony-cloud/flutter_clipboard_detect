@@ -1,0 +1,48 @@
+name: Publish to pub.dev
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run flutter pub publish --dry-run instead of publishing'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Dry run publish
+        run: flutter pub publish --dry-run
+
+      - name: Publish package
+        if: ${{ inputs.dry_run == 'false' }}
+        env:
+          PUB_DEV_CREDENTIALS: ${{ secrets.PUB_DEV_CREDENTIALS }}
+        run: |
+          if [ -z "$PUB_DEV_CREDENTIALS" ]; then
+            echo "PUB_DEV_CREDENTIALS secret is not set." >&2
+            exit 1
+          fi
+          mkdir -p ~/.pub-cache
+          printf '%s' "$PUB_DEV_CREDENTIALS" > ~/.pub-cache/credentials.json
+          flutter pub publish --force
