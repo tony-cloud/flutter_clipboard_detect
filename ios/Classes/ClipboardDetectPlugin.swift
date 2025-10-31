@@ -26,19 +26,19 @@ public class ClipboardDetectPlugin: NSObject, FlutterPlugin {
     case .getPlatformVersion:
       result("iOS " + UIDevice.current.systemVersion)
     case .detectClipboardPatterns:
-      detectClipboardPatterns(arguments: call.arguments, result: result)
+      detectClipboardPatterns(arguments: call.arguments, flutterResult: result)
     case .detectClipboardPatternsInItems:
-      detectClipboardPatternsInItems(arguments: call.arguments, result: result)
+      detectClipboardPatternsInItems(arguments: call.arguments, flutterResult: result)
     case .detectClipboardValues:
-      detectClipboardValues(arguments: call.arguments, result: result)
+      detectClipboardValues(arguments: call.arguments, flutterResult: result)
     case .detectClipboardValuesInItems:
-      detectClipboardValuesInItems(arguments: call.arguments, result: result)
+      detectClipboardValuesInItems(arguments: call.arguments, flutterResult: result)
     }
   }
 
-  private func detectClipboardPatterns(arguments: Any?, result: @escaping FlutterResult) {
+  private func detectClipboardPatterns(arguments: Any?, flutterResult: @escaping FlutterResult) {
     guard #available(iOS 14.0, *) else {
-      result(FlutterError(code: "unsupported", message: "UIPasteboard.detectPatterns requires iOS 14 or newer.", details: nil))
+      flutterResult(FlutterError(code: "unsupported", message: "UIPasteboard.detectPatterns requires iOS 14 or newer.", details: nil))
       return
     }
 
@@ -46,31 +46,28 @@ public class ClipboardDetectPlugin: NSObject, FlutterPlugin {
     let resolvedPatterns = resolveDetectionPatterns(from: patternNames)
 
     if resolvedPatterns.isEmpty {
-      result([String]())
+      flutterResult([String]())
       return
     }
 
-    UIPasteboard.general.detectPatterns(for: resolvedPatterns) { detectedPatterns, error in
-      if let error = error {
+    UIPasteboard.general.detectPatterns(for: resolvedPatterns) { outcome in
+      switch outcome {
+      case .failure(let error):
         DispatchQueue.main.async {
-          result(FlutterError(code: "pattern_detection_failed", message: error.localizedDescription, details: nil))
+          flutterResult(FlutterError(code: "pattern_detection_failed", message: error.localizedDescription, details: nil))
         }
-        return
+      case .success(let detectedPatterns):
+        let matches = detectedPatterns.map { $0.rawValue }.sorted()
+        DispatchQueue.main.async {
+          flutterResult(matches)
+        }
       }
-
-      guard let detectedPatterns = detectedPatterns, !detectedPatterns.isEmpty else {
-        DispatchQueue.main.async { result([String]()) }
-        return
-      }
-
-      let matches = detectedPatterns.map { $0.rawValue }.sorted()
-      DispatchQueue.main.async { result(matches) }
     }
   }
 
-  private func detectClipboardPatternsInItems(arguments: Any?, result: @escaping FlutterResult) {
+  private func detectClipboardPatternsInItems(arguments: Any?, flutterResult: @escaping FlutterResult) {
     guard #available(iOS 14.0, *) else {
-      result(FlutterError(code: "unsupported", message: "UIPasteboard.detectPatterns requires iOS 14 or newer.", details: nil))
+      flutterResult(FlutterError(code: "unsupported", message: "UIPasteboard.detectPatterns requires iOS 14 or newer.", details: nil))
       return
     }
 
@@ -79,41 +76,38 @@ public class ClipboardDetectPlugin: NSObject, FlutterPlugin {
     let resolvedPatterns = resolveDetectionPatterns(from: patternNames)
 
     if resolvedPatterns.isEmpty {
-      result([[String]]())
+      flutterResult([[String]]())
       return
     }
 
     let rawIndexes = parseItemIndexes(from: args?["itemIndexes"])
     if let rawIndexes, rawIndexes.isEmpty {
-      result([[String]]())
+      flutterResult([[String]]())
       return
     }
 
     let indexSet = resolveIndexSet(from: rawIndexes)
 
-    UIPasteboard.general.detectPatterns(for: resolvedPatterns, inItemSet: indexSet) { patternResults, error in
-      if let error = error {
+    UIPasteboard.general.detectPatterns(for: resolvedPatterns, inItemSet: indexSet) { outcome in
+      switch outcome {
+      case .failure(let error):
         DispatchQueue.main.async {
-          result(FlutterError(code: "pattern_detection_failed", message: error.localizedDescription, details: nil))
+          flutterResult(FlutterError(code: "pattern_detection_failed", message: error.localizedDescription, details: nil))
         }
-        return
+      case .success(let patternResults):
+        let matches = patternResults.map { patterns -> [String] in
+          patterns.map { $0.rawValue }.sorted()
+        }
+        DispatchQueue.main.async {
+          flutterResult(matches)
+        }
       }
-
-      guard let patternResults = patternResults else {
-        DispatchQueue.main.async { result([[String]]()) }
-        return
-      }
-
-      let matches = patternResults.map { patterns -> [String] in
-        patterns.map { $0.rawValue }.sorted()
-      }
-      DispatchQueue.main.async { result(matches) }
     }
   }
 
-  private func detectClipboardValues(arguments: Any?, result: @escaping FlutterResult) {
+  private func detectClipboardValues(arguments: Any?, flutterResult: @escaping FlutterResult) {
     guard #available(iOS 14.0, *) else {
-      result(FlutterError(code: "unsupported", message: "UIPasteboard.detectValues requires iOS 14 or newer.", details: nil))
+      flutterResult(FlutterError(code: "unsupported", message: "UIPasteboard.detectValues requires iOS 14 or newer.", details: nil))
       return
     }
 
@@ -122,33 +116,38 @@ public class ClipboardDetectPlugin: NSObject, FlutterPlugin {
     let resolvedPatterns = resolveDetectionPatterns(from: patternNames)
 
     if resolvedPatterns.isEmpty {
-      result([String: Any]())
+      flutterResult([String: Any]())
       return
     }
 
-    UIPasteboard.general.detectValues(for: resolvedPatterns) { values, error in
-      if let error = error {
+    UIPasteboard.general.detectValues(for: resolvedPatterns) { outcome in
+      switch outcome {
+      case .failure(let error):
         DispatchQueue.main.async {
-          result(FlutterError(code: "value_detection_failed", message: error.localizedDescription, details: nil))
+          flutterResult(FlutterError(code: "value_detection_failed", message: error.localizedDescription, details: nil))
         }
-        return
-      }
+      case .success(let values):
+        guard !values.isEmpty else {
+          DispatchQueue.main.async {
+            flutterResult([String: Any]())
+          }
+          return
+        }
 
-      guard let values = values, !values.isEmpty else {
-        DispatchQueue.main.async { result([String: Any]()) }
-        return
+        let serialized = values.reduce(into: [String: Any]()) { partialResult, element in
+          let (pattern, value) = element
+          partialResult[pattern.rawValue] = self.serializeDetectedValue(value)
+        }
+        DispatchQueue.main.async {
+          flutterResult(serialized)
+        }
       }
-
-      let serialized = values.reduce(into: [String: Any]()) { partialResult, entry in
-        partialResult[entry.key.rawValue] = self.serializeDetectedValue(entry.value)
-      }
-      DispatchQueue.main.async { result(serialized) }
     }
   }
 
-  private func detectClipboardValuesInItems(arguments: Any?, result: @escaping FlutterResult) {
+  private func detectClipboardValuesInItems(arguments: Any?, flutterResult: @escaping FlutterResult) {
     guard #available(iOS 14.0, *) else {
-      result(FlutterError(code: "unsupported", message: "UIPasteboard.detectValues requires iOS 14 or newer.", details: nil))
+      flutterResult(FlutterError(code: "unsupported", message: "UIPasteboard.detectValues requires iOS 14 or newer.", details: nil))
       return
     }
 
@@ -157,63 +156,45 @@ public class ClipboardDetectPlugin: NSObject, FlutterPlugin {
     let resolvedPatterns = resolveDetectionPatterns(from: patternNames)
 
     if resolvedPatterns.isEmpty {
-      result([[String: Any]]())
+      flutterResult([[String: Any]]())
       return
     }
 
     let rawIndexes = parseItemIndexes(from: args?["itemIndexes"])
     if let rawIndexes, rawIndexes.isEmpty {
-      result([[String: Any]]())
+      flutterResult([[String: Any]]())
       return
     }
 
     let indexSet = resolveIndexSet(from: rawIndexes)
 
-    UIPasteboard.general.detectValues(for: resolvedPatterns, inItemSet: indexSet) { valueResults, error in
-      if let error = error {
+    UIPasteboard.general.detectValues(for: resolvedPatterns, inItemSet: indexSet) { outcome in
+      switch outcome {
+      case .failure(let error):
         DispatchQueue.main.async {
-          result(FlutterError(code: "value_detection_failed", message: error.localizedDescription, details: nil))
+          flutterResult(FlutterError(code: "value_detection_failed", message: error.localizedDescription, details: nil))
         }
-        return
-      }
-
-      guard let valueResults = valueResults else {
-        DispatchQueue.main.async { result([[String: Any]]()) }
-        return
-      }
-
-      let serialized = valueResults.map { dictionary -> [String: Any] in
-        dictionary.reduce(into: [String: Any]()) { partialResult, entry in
-          partialResult[entry.key.rawValue] = self.serializeDetectedValue(entry.value)
+      case .success(let valueResults):
+        let serialized = valueResults.map { dictionary -> [String: Any] in
+          dictionary.reduce(into: [String: Any]()) { partialResult, element in
+            let (pattern, value) = element
+            partialResult[pattern.rawValue] = self.serializeDetectedValue(value)
+          }
+        }
+        DispatchQueue.main.async {
+          flutterResult(serialized)
         }
       }
-      DispatchQueue.main.async { result(serialized) }
     }
   }
 
   @available(iOS 14.0, *)
   private func resolveDetectionPatterns(from rawNames: [String]?) -> Set<UIPasteboard.DetectionPattern> {
-    var defaultPatternNames = [
+    let defaultPatternNames = [
       UIPasteboard.DetectionPattern.probableWebURL.rawValue,
-      UIPasteboard.DetectionPattern.probablePhoneNumber.rawValue,
-      UIPasteboard.DetectionPattern.probableEmailAddress.rawValue,
-      UIPasteboard.DetectionPattern.probableAddress.rawValue,
       UIPasteboard.DetectionPattern.number.rawValue,
       UIPasteboard.DetectionPattern.probableWebSearch.rawValue,
     ]
-
-    if #available(iOS 15.0, *) {
-      defaultPatternNames.append(contentsOf: [
-        UIPasteboard.DetectionPattern.link.rawValue,
-        UIPasteboard.DetectionPattern.phoneNumber.rawValue,
-        UIPasteboard.DetectionPattern.emailAddress.rawValue,
-        UIPasteboard.DetectionPattern.postalAddress.rawValue,
-        UIPasteboard.DetectionPattern.calendarEvent.rawValue,
-        UIPasteboard.DetectionPattern.shipmentTrackingNumber.rawValue,
-        UIPasteboard.DetectionPattern.flightNumber.rawValue,
-        UIPasteboard.DetectionPattern.moneyAmount.rawValue,
-      ])
-    }
 
     let names = rawNames?.filter { !$0.isEmpty } ?? defaultPatternNames
     let patterns = names.compactMap { UIPasteboard.DetectionPattern(rawValue: $0) }
