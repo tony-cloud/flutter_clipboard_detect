@@ -1,13 +1,13 @@
-name: Publish to pub.dev
+name: Test
 
 on:
   push:
-    tags: ['v*']
+    branches: ['*']
+  pull_request:
+    branches: ['main']
 jobs:
-  publish:
+  test:
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
 
     steps:
       - name: Checkout repository
@@ -17,17 +17,8 @@ jobs:
         with:
           channel: stable
 
-      - uses: flutter-actions/setup-pubdev-credentials@v1
-
       - name: Install dependencies
         run: flutter pub get
 
       - name: Run tests
         run: flutter test
-
-      - name: Dry run publish
-        run: flutter pub publish --dry-run
-
-      - name: Publish package
-        run: |
-          flutter pub publish --force
