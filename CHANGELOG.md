@@ -1,3 +1,6 @@
+## 0.0.3
+* Update package description to reflect value detection support.
+
 ## 0.0.2
 
 * Expose pattern and value detection helpers (`detectClipboardPatternsInItems`,

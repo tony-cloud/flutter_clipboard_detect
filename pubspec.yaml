@@ -1,6 +1,6 @@
 name: clipboard_detect
 description: "Flutter plugin that exposes iOS clipboard pattern and value detection."
-version: 0.0.2
+version: 0.0.3
 repository: https://github.com/tony-cloud/flutter_clipboard_detect.git
 
 environment:
