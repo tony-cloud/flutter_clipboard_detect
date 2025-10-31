@@ -1,6 +1,6 @@
 # clipboard_detect
 
-Flutter plugin that exposes iOS clipboard pattern detection powered by `UIPasteboard.detectPatterns`.
+Flutter plugin that exposes iOS clipboard pattern and value detection.
 
 ## Usage
 
@@ -29,7 +29,6 @@ The pattern probe tells you when it's worthwhile to read the clipboard. Once a p
 
 ```dart
 import 'package:clipboard_detect/clipboard_detect.dart';
-import 'package:flutter/services.dart';
 
 Future<bool> clipboardContainsAllowedUrl(Set<String> allowedHosts) async {
 	final detector = ClipboardDetect();
@@ -39,8 +38,11 @@ Future<bool> clipboardContainsAllowedUrl(Set<String> allowedHosts) async {
 		return false;
 	}
 
-	final data = await Clipboard.getData('text/plain');
-	final clipboardValue = data?.text?.trim();
+	final values = await detector.detectClipboardValues(
+		patterns: const <String>['probableWebURL'],
+	);
+
+	final clipboardValue = values['probableWebURL'] as String?;
 	if (clipboardValue == null || clipboardValue.isEmpty) {
 		return false;
 	}
@@ -73,6 +75,25 @@ Call the helper with the set of domains you trust:
 ```dart
 final isAllowed = await clipboardContainsAllowedUrl({'example.com'});
 ```
+
+### Inspect multiple pasteboard items
+
+Use the `*InItems` variants to scope pattern and value detection to specific pasteboard entries (for example, to distinguish between primary and secondary clips):
+
+```dart
+final detector = ClipboardDetect();
+final patternMatches = await detector.detectClipboardPatternsInItems(
+	itemIndexes: const <int>[0, 1],
+	patterns: const <String>['probableWebURL', 'probablePhoneNumber'],
+);
+
+final valueMatches = await detector.detectClipboardValuesInItems(
+	itemIndexes: const <int>[0, 1],
+	patterns: const <String>['probableWebURL'],
+);
+```
+
+The plugin serializes any detected values into channel-safe data (strings, numbers, lists, and maps). Complex detection results (for example, data-detector structures) are stringified via `description`.
 
 > **Note:** Pattern detection is available on iOS 14 and newer. On earlier versions the plugin throws an `PlatformException` with code `unsupported`.
 

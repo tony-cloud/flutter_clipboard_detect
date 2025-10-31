@@ -24,6 +24,7 @@ class _MyAppState extends State<MyApp> {
   String? _detectionError;
   String? _lastClipboardUrl;
   bool? _clipboardUrlAllowed;
+  Map<String, dynamic> _detectedValues = const <String, dynamic>{};
 
   @override
   void initState() {
@@ -38,8 +39,7 @@ class _MyAppState extends State<MyApp> {
     // We also handle the message potentially returning null.
     try {
       platformVersion =
-          await _clipboardDetectPlugin.getPlatformVersion() ??
-          'Unknown platform version';
+          await _clipboardDetectPlugin.getPlatformVersion() ?? 'Unknown platform version';
     } on PlatformException {
       platformVersion = 'Failed to get platform version.';
     }
@@ -58,25 +58,43 @@ class _MyAppState extends State<MyApp> {
     try {
       final matches = await _clipboardDetectPlugin.detectClipboardPatterns();
       final hasProbableUrl = matches.contains('probableWebURL');
+      Map<String, dynamic> detectedValues = const <String, dynamic>{};
       String? clipboardUrl;
-      var urlAllowed = false;
+      bool? urlAllowed;
 
       if (hasProbableUrl) {
-        final data = await Clipboard.getData('text/plain');
-        final value = data?.text?.trim();
+        detectedValues = await _clipboardDetectPlugin.detectClipboardValues(
+          patterns: const <String>['probableWebURL'],
+        );
 
-        if (value != null && value.isNotEmpty) {
-          clipboardUrl = value;
-          final resolved = _resolveUrl(value);
+        final value = detectedValues['probableWebURL'];
+        final candidate = _stringFromDetectedValue(value)?.trim();
+
+        if (candidate != null && candidate.isNotEmpty) {
+          clipboardUrl = candidate;
+          final resolved = _resolveUrl(candidate);
           if (resolved != null) {
             urlAllowed = _allowedUrlHosts.contains(resolved.host.toLowerCase());
+          } else {
+            urlAllowed = false;
           }
+        } else {
+          urlAllowed = false;
         }
+      }
+
+      if (!hasProbableUrl) {
+        detectedValues = await _clipboardDetectPlugin.detectClipboardValues();
+      }
+
+      if (!hasProbableUrl) {
+        detectedValues = await _clipboardDetectPlugin.detectClipboardValues();
       }
 
       setState(() {
         _detectedPatterns = matches;
         _detectionError = null;
+        _detectedValues = detectedValues;
         _lastClipboardUrl = clipboardUrl;
         _clipboardUrlAllowed = hasProbableUrl ? urlAllowed : null;
       });
@@ -86,6 +104,7 @@ class _MyAppState extends State<MyApp> {
         _detectionError = error.message ?? error.code;
         _lastClipboardUrl = null;
         _clipboardUrlAllowed = null;
+        _detectedValues = const <String, dynamic>{};
       });
     }
   }
@@ -107,6 +126,42 @@ class _MyAppState extends State<MyApp> {
     }
 
     return null;
+  }
+
+  String? _stringFromDetectedValue(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+
+    if (value is String) {
+      return value;
+    }
+
+    if (value is num || value is bool) {
+      return value.toString();
+    }
+
+    if (value is List) {
+      for (final entry in value) {
+        final candidate = _stringFromDetectedValue(entry);
+        if (candidate != null && candidate.isNotEmpty) {
+          return candidate;
+        }
+      }
+      return null;
+    }
+
+    if (value is Map) {
+      for (final entry in value.values) {
+        final candidate = _stringFromDetectedValue(entry);
+        if (candidate != null && candidate.isNotEmpty) {
+          return candidate;
+        }
+      }
+      return null;
+    }
+
+    return value.toString();
   }
 
   @override
@@ -151,11 +206,14 @@ class _MyAppState extends State<MyApp> {
                         ? 'URL host matches allowed domains: ${_allowedUrlHosts.join(', ')}'
                         : 'URL host outside allowed domains: ${_allowedUrlHosts.join(', ')}',
                     style: TextStyle(
-                      color: _clipboardUrlAllowed!
-                          ? Colors.green
-                          : Colors.orangeAccent,
+                      color: _clipboardUrlAllowed! ? Colors.green : Colors.orangeAccent,
                     ),
                   ),
+                ],
+                if (_detectedValues.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: 12),
+                  const Text('Detected values:'),
+                  SelectableText(_detectedValues.toString()),
                 ],
               ],
             ),

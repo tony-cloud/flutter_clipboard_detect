@@ -28,8 +28,24 @@ abstract class ClipboardDetectPlatform extends PlatformInterface {
   }
 
   Future<List<String>> detectClipboardPatterns({List<String>? patterns}) {
-    throw UnimplementedError(
-      'detectClipboardPatterns() has not been implemented.',
-    );
+    throw UnimplementedError('detectClipboardPatterns() has not been implemented.');
+  }
+
+  Future<List<List<String>>> detectClipboardPatternsInItems({
+    List<int>? itemIndexes,
+    List<String>? patterns,
+  }) {
+    throw UnimplementedError('detectClipboardPatternsInItems() has not been implemented.');
+  }
+
+  Future<Map<String, dynamic>> detectClipboardValues({List<String>? patterns}) {
+    throw UnimplementedError('detectClipboardValues() has not been implemented.');
+  }
+
+  Future<List<Map<String, dynamic>>> detectClipboardValuesInItems({
+    List<int>? itemIndexes,
+    List<String>? patterns,
+  }) {
+    throw UnimplementedError('detectClipboardValuesInItems() has not been implemented.');
   }
 }

@@ -11,9 +11,7 @@ class MethodChannelClipboardDetect extends ClipboardDetectPlatform {
 
   @override
   Future<String?> getPlatformVersion() async {
-    final version = await methodChannel.invokeMethod<String>(
-      'getPlatformVersion',
-    );
+    final version = await methodChannel.invokeMethod<String>('getPlatformVersion');
     return version;
   }
 
@@ -24,10 +22,78 @@ class MethodChannelClipboardDetect extends ClipboardDetectPlatform {
       args['patterns'] = patterns;
     }
 
-    final result = await methodChannel.invokeListMethod<String>(
-      'detectClipboardPatterns',
+    final result = await methodChannel.invokeListMethod<String>('detectClipboardPatterns', args);
+    return result ?? const <String>[];
+  }
+
+  @override
+  Future<List<List<String>>> detectClipboardPatternsInItems({
+    List<int>? itemIndexes,
+    List<String>? patterns,
+  }) async {
+    final args = <String, dynamic>{};
+    if (patterns != null) {
+      args['patterns'] = patterns;
+    }
+    if (itemIndexes != null) {
+      args['itemIndexes'] = itemIndexes;
+    }
+
+    final result = await methodChannel.invokeListMethod<dynamic>(
+      'detectClipboardPatternsInItems',
       args,
     );
-    return result ?? const <String>[];
+
+    if (result == null) {
+      return const <List<String>>[];
+    }
+
+    return result.map((item) => (item as List<dynamic>).cast<String>()).toList(growable: false);
+  }
+
+  @override
+  Future<Map<String, dynamic>> detectClipboardValues({List<String>? patterns}) async {
+    final args = <String, dynamic>{};
+    if (patterns != null) {
+      args['patterns'] = patterns;
+    }
+
+    final result = await methodChannel.invokeMapMethod<String, dynamic>(
+      'detectClipboardValues',
+      args,
+    );
+    return result ?? const <String, dynamic>{};
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> detectClipboardValuesInItems({
+    List<int>? itemIndexes,
+    List<String>? patterns,
+  }) async {
+    final args = <String, dynamic>{};
+    if (patterns != null) {
+      args['patterns'] = patterns;
+    }
+    if (itemIndexes != null) {
+      args['itemIndexes'] = itemIndexes;
+    }
+
+    final result = await methodChannel.invokeListMethod<dynamic>(
+      'detectClipboardValuesInItems',
+      args,
+    );
+
+    if (result == null) {
+      return const <Map<String, dynamic>>[];
+    }
+
+    return result
+        .map((item) {
+          final typed = (item as Map<dynamic, dynamic>).map(
+            (key, value) => MapEntry(key as String, value),
+          );
+          return Map<String, dynamic>.from(typed);
+        })
+        .toList(growable: false);
   }
 }

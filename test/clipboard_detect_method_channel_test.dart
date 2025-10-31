@@ -17,6 +17,16 @@ void main() {
             return '42';
           case 'detectClipboardPatterns':
             return <String>['probableWebURL'];
+          case 'detectClipboardPatternsInItems':
+            return <List<String>>[
+              <String>['probableWebURL'],
+            ];
+          case 'detectClipboardValues':
+            return <String, dynamic>{'probableWebURL': 'https://example.com'};
+          case 'detectClipboardValuesInItems':
+            return <Map<String, dynamic>>[
+              <String, dynamic>{'probableWebURL': 'https://example.com'},
+            ];
           default:
             return null;
         }
@@ -37,5 +47,23 @@ void main() {
 
   test('detectClipboardPatterns', () async {
     expect(await platform.detectClipboardPatterns(), <String>['probableWebURL']);
+  });
+
+  test('detectClipboardPatternsInItems', () async {
+    expect(await platform.detectClipboardPatternsInItems(), <List<String>>[
+      <String>['probableWebURL'],
+    ]);
+  });
+
+  test('detectClipboardValues', () async {
+    expect(await platform.detectClipboardValues(), <String, dynamic>{
+      'probableWebURL': 'https://example.com',
+    });
+  });
+
+  test('detectClipboardValuesInItems', () async {
+    expect(await platform.detectClipboardValuesInItems(), <Map<String, dynamic>>[
+      <String, dynamic>{'probableWebURL': 'https://example.com'},
+    ]);
   });
 }
